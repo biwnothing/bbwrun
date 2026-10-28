@@ -550,7 +550,6 @@
                     ⏳ กำลังประมวลผล...
                 </div>
 
-                <!-- เปลี่ยนจาก Text ธรรมดา เป็น Textarea เพื่อให้ผู้ใช้กดแก้ไขก่อนบันทึกได้ -->
                 <div id="aiResultBox" style="margin-top: 10px; display: none;">
                     <label style="font-size: 0.75rem; color: #10b981; font-weight: bold; margin-bottom: 3px; display: block;">✅ ผลการวิเคราะห์ (แก้ไขได้):</label>
                     <textarea id="runAiSummary" class="form-control" rows="4" placeholder="ข้อมูลที่ AI ดึงได้จะแสดงที่นี่..."></textarea>
@@ -618,7 +617,7 @@
             </div>
             
             <div class="pb-list" id="pbListContainer">
-                <!-- โครงสร้างรายการ 7 ระยะ จะถูก Render ผ่าน JavaScript เพื่อให้สลับโหมดดู/แก้ไขได้ -->
+                <!-- โครงสร้างรายการ 7 ระยะ จะถูก Render ผ่าน JavaScript -->
             </div>
             
             <button class="btn-save" id="btnSavePB" style="margin-top: 15px; display: none;" onclick="savePBData()">💾 บันทึกสถิติใหม่</button>
@@ -647,9 +646,8 @@
         /* =========================================
            Firebase Setup (ปลอดภัย 100%)
            ========================================= */
-        // 👇 นำค่าจาก Firebase > Project Settings > Web App มาวางตรงนี้ได้เลย
         const firebaseConfig = {
-            apiKey: "AIzaSyAtSEdpdjAbB9eWIW3QU4FtCj19y8F5R3A",
+            apiKey: ""AIzaSyAtSEdpdjAbB9eWIW3QU4FtCj19y8F5R3A",
             authDomain: "bwrun-453ed.firebaseapp.com",
             projectId: "bwrun-453ed",
             storageBucket: "bwrun-453ed.firebasestorage.app",
@@ -764,7 +762,7 @@
                     if(data.pbStats) {
                         pbData = data.pbStats;
                     }
-                    renderPBList(false); // วาดกล่อง PB แบบดูอย่างเดียว
+                    renderPBList(false); 
                 } else {
                     renderPBList(false);
                 }
@@ -799,16 +797,14 @@
             }
         }
 
-        // ดึงข้อมูลการวิ่งทั้งเดือน (ดึงครั้งเดียวตอนเปลี่ยนเดือนเพื่อประหยัดโควต้า)
+        // ดึงข้อมูลการวิ่งทั้งเดือน 
         async function loadMonthData(year, month) {
-            currentMonthData = {}; // เคลียร์ของเก่า
+            currentMonthData = {}; 
             document.getElementById('monthYearDisplay').innerText = "กำลังโหลด...";
 
-            // สร้าง String ของเดือนนี้ เช่น "2026-9-" (สังเกตเราใช้ format YYYY-M-D)
             const prefix = `${year}-${month}-`; 
 
             try {
-                // ค้นหาเอกสารวิ่งทั้งหมดที่ ID ขึ้นต้นด้วยเดือนนี้
                 const querySnapshot = await db.collection('users').doc(currentUserUid)
                                             .collection('runs')
                                             .where(firebase.firestore.FieldPath.documentId(), '>=', prefix)
@@ -846,10 +842,8 @@
             };
 
             try {
-                // บันทึกลง Firestore
                 await db.collection('users').doc(currentUserUid).collection('runs').doc(selectedDateKey).set(payload);
                 
-                // อัปเดต Object ใน RAM แล้วโหลดปฏิทินใหม่โดยไม่ต้องดึงเน็ตอีกรอบ (ประหยัดโควต้า)
                 currentMonthData[selectedDateKey] = payload;
                 renderCalendar(currentYear, currentMonth);
                 
@@ -859,7 +853,7 @@
             }
         }
 
-        // บันทึกสถิติ PB 7 ระยะ (โหมด Edit)
+        // บันทึกสถิติ PB 7 ระยะ 
         async function savePBData() {
             distances.forEach(dist => {
                 pbData[dist].time = document.getElementById(`pb-time-${dist}`).value;
@@ -869,14 +863,14 @@
 
             try {
                 await db.collection('users').doc(currentUserUid).set({ pbStats: pbData }, { merge: true });
-                toggleEditPB(); // ปิดโหมด Edit
+                toggleEditPB(); 
             } catch (error) {
                 alert("เซฟ PB ไม่สำเร็จ: " + error.message);
             }
         }
 
         /* =========================================
-           UI ของกล่อง PB (สลับโหมด ดู/แก้ไข ได้)
+           UI ของกล่อง PB 
            ========================================= */
         let isEditingPB = false;
 
@@ -933,7 +927,7 @@
 
 
         /* =========================================
-           Gemini API Setup (อ่านจาก LocalStorage ไม่ฝังในโค้ด)
+           Gemini API Setup
            ========================================= */
         function getSavedApiKey() {
             return localStorage.getItem('geminiRunApiKey') || "";
@@ -1011,13 +1005,12 @@
                 const data = await response.json();
                 if (data.error) throw new Error(data.error.message);
 
-                // ดึง Text มาใส่ใน Textarea ให้ User แก้อีกทีก่อนเซฟได้
                 const textResult = data.candidates[0].content.parts[0].text;
                 aiSummary.value = textResult.trim();
                 
                 loadingText.style.display = 'none';
                 resultBox.style.display = 'block';
-                fileInput.value = ""; // เคลียร์รูปทิ้ง
+                fileInput.value = ""; 
 
             } catch (error) {
                 console.error(error);
@@ -1027,7 +1020,7 @@
         }
 
         /* =========================================
-           Calendar Logic (ดึงข้อมูลจาก currentMonthData)
+           Calendar Logic 
            ========================================= */
         const monthNames = ["มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"];
 
@@ -1064,7 +1057,6 @@
             for (let day = 1; day <= daysInMonth; day++) {
                 const dateKey = `${year}-${month}-${day}`;
                 
-                // เช็คว่าในเดือนนี้ วันที่นี้ มีข้อมูลวิ่งในฐานข้อมูลหรือไม่
                 const plan = currentMonthData[dateKey] || { type: 'rest', title: 'Rest Day' };
                 
                 const cell = document.createElement('div');
@@ -1103,7 +1095,6 @@
                 currentMonth = 0;
                 currentYear++;
             }
-            // พอเปลี่ยนเดือน ให้ไปดูดข้อมูลจาก Firebase มาใหม่
             if (currentUserUid) {
                 loadMonthData(currentYear, currentMonth);
             } else {
@@ -1118,14 +1109,12 @@
             selectedDateKey = `${year}-${month}-${day}`;
             document.getElementById('modalDateTitle').innerText = `📅 ${day} ${monthNames[month]} ${year}`;
             
-            // นำข้อมูลเก่ามาใส่ในช่องกรอก (ถ้ามี)
             document.getElementById('runType').value = existingPlan.type || 'rest';
             document.getElementById('runTarget').value = existingPlan.title === 'Rest Day' ? '' : (existingPlan.title || '');
             document.getElementById('runAiSummary').value = existingPlan.aiSummary || '';
             document.getElementById('runWeight').value = existingPlan.weight || '';
             document.getElementById('runSleep').value = existingPlan.sleep || '';
             
-            // จัดการ UI กล่อง AI
             document.getElementById('garminImages').value = "";
             document.getElementById('aiLoading').style.display = 'none';
             document.getElementById('aiResultBox').style.display = existingPlan.aiSummary ? 'block' : 'none';
@@ -1135,6 +1124,10 @@
 
         function openProfileModal() {
             document.getElementById('profileModal').style.display = 'flex';
+        }
+
+        function openPBModal() {
+            document.getElementById('pbModal').style.display = 'flex';
         }
 
         function closeModal(modalId) {
