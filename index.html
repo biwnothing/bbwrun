@@ -49,7 +49,7 @@
             flex-direction: column;
         }
 
-        /* หน้าจอล็อกอิน (ปิดทับหน้าเว็บทั้งหมดจนกว่าจะล็อกอิน) */
+        /* หน้าจอล็อกอิน */
         #loginOverlay {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -611,7 +611,7 @@
             <div class="modal-header">
                 <span>🏆 สถิติ Personal Best (PRs)</span>
                 <div>
-                    <button id="btnEditPB" onclick="toggleEditPB()" style="background:none; border:none; color:var(--color-primary); cursor:pointer; margin-right:10px; font-weight:bold;">✏️ แก้ไข</button>
+                    <button id="btnEditPB" onclick="toggleEditPB()" style="background:none; border:none; color:var(--color-primary); cursor:pointer; margin-right:10px; font-weight:bold;">✏️ แก้ไขด้วยตัวเอง</button>
                     <button class="btn-close" onclick="closeModal('pbModal')">✕</button>
                 </div>
             </div>
@@ -620,7 +620,7 @@
                 <!-- โครงสร้างรายการ 7 ระยะ จะถูก Render ผ่าน JavaScript -->
             </div>
             
-            <button class="btn-save" id="btnSavePB" style="margin-top: 15px; display: none;" onclick="savePBData()">💾 บันทึกสถิติใหม่</button>
+            <button class="btn-save" id="btnSavePB" style="margin-top: 15px; display: none;" onclick="savePBData()">💾 บันทึกสถิติ</button>
         </div>
     </div>
 
@@ -692,7 +692,6 @@
                 currentUserUid = user.uid;
                 document.getElementById('loginOverlay').style.display = 'none';
                 
-                // ดึงข้อมูล Profile, PB และปฏิทินเดือนปัจจุบัน ทันทีที่ล็อกอินผ่าน
                 loadProfileAndPB();
                 loadMonthData(currentYear, currentMonth);
             } else {
@@ -722,7 +721,6 @@
 
         function handleLogout() {
             auth.signOut().then(() => {
-                // ล้างข้อมูลหน้าจอออกเมื่อ Logout
                 currentMonthData = {};
                 renderCalendar(currentYear, currentMonth);
             });
@@ -732,7 +730,6 @@
            ฟังก์ชันเชื่อมต่อ Firestore (ดึงและบันทึก)
            ========================================= */
         
-        // โหลดโปรไฟล์และสถิติ PB
         async function loadProfileAndPB() {
             try {
                 const docRef = db.collection('users').doc(currentUserUid);
@@ -740,7 +737,6 @@
                 if (docSnap.exists) {
                     const data = docSnap.data();
                     
-                    // อัปเดตหน้าจอโปรไฟล์
                     if(data.dob) {
                         document.getElementById('inputDOB').value = data.dob;
                         calculateAge();
@@ -758,7 +754,6 @@
                         document.getElementById('displayLongGoal').innerText = data.longGoal;
                     }
 
-                    // อัปเดตข้อมูล PB
                     if(data.pbStats) {
                         pbData = data.pbStats;
                     }
@@ -771,7 +766,6 @@
             }
         }
 
-        // เซฟโปรไฟล์
         async function saveProfile() {
             const height = document.getElementById('inputHeight').value;
             const dob = document.getElementById('inputDOB').value;
@@ -797,7 +791,6 @@
             }
         }
 
-        // ดึงข้อมูลการวิ่งทั้งเดือน 
         async function loadMonthData(year, month) {
             currentMonthData = {}; 
             document.getElementById('monthYearDisplay').innerText = "กำลังโหลด...";
@@ -822,7 +815,6 @@
             }
         }
 
-        // เซฟข้อมูลวิ่งรายวัน
         async function saveDayData() {
             if (!selectedDateKey) return;
 
@@ -853,7 +845,6 @@
             }
         }
 
-        // บันทึกสถิติ PB 7 ระยะ 
         async function savePBData() {
             distances.forEach(dist => {
                 pbData[dist].time = document.getElementById(`pb-time-${dist}`).value;
@@ -890,9 +881,9 @@
                     <div class="pb-item">
                         <span style="width: 25%;">${distLabels[dist]}</span>
                         <div class="pb-edit-inputs">
-                            <input type="text" id="pb-time-${dist}" class="form-control" placeholder="เวลา (00:00)" value="${data.time || ''}">
-                            <input type="text" id="pb-diff-${dist}" class="form-control" placeholder="(-00:00)" value="${data.diff || ''}">
-                            <input type="text" id="pb-date-${dist}" class="form-control" placeholder="วว/ดด/ปป" value="${data.date || ''}">
+                            <input type="text" id="pb-time-${dist}" class="form-control" placeholder="เวลา" value="${data.time || ''}">
+                            <input type="text" id="pb-diff-${dist}" class="form-control" placeholder="ส่วนต่าง" value="${data.diff || ''}">
+                            <input type="text" id="pb-date-${dist}" class="form-control" placeholder="วันที่" value="${data.date || ''}">
                         </div>
                     </div>`;
                 } else {
@@ -912,14 +903,14 @@
 
         function toggleEditPB() {
             isEditingPB = !isEditingPB;
-            document.getElementById('btnEditPB').innerText = isEditingPB ? "ยกเลิก" : "✏️ แก้ไข";
+            document.getElementById('btnEditPB').innerText = isEditingPB ? "ยกเลิก" : "✏️ แก้ไขด้วยตัวเอง";
             document.getElementById('btnSavePB').style.display = isEditingPB ? "block" : "none";
             renderPBList(isEditingPB);
         }
 
         function openPBModal() {
             isEditingPB = false;
-            document.getElementById('btnEditPB').innerText = "✏️ แก้ไข";
+            document.getElementById('btnEditPB').innerText = "✏️ แก้ไขด้วยตัวเอง";
             document.getElementById('btnSavePB').style.display = "none";
             renderPBList(false);
             document.getElementById('pbModal').style.display = 'flex';
@@ -927,7 +918,7 @@
 
 
         /* =========================================
-           Gemini API Setup
+           Gemini API Setup & ระบบ AI วิเคราะห์แบบ Auto-PB Update
            ========================================= */
         function getSavedApiKey() {
             return localStorage.getItem('geminiRunApiKey') || "";
@@ -983,11 +974,31 @@
             resultBox.style.display = 'none';
 
             try {
-                const imageParts = await Promise.all(
-                    [...fileInput.files].map(fileToGenerativePart)
-                );
+                const imageParts = await Promise.all([...fileInput.files].map(fileToGenerativePart));
 
-                const prompt = "วิเคราะห์และดึงข้อมูลสถิติทั้งหมดจากรูปภาพที่แนบมาทุกรูป (เช่น ระยะทางรวม, เวลา, Pace, Heart Rate, Lap splits) สรุปภาพรวมการวิ่งให้อ่านง่ายเป็นข้อๆ กระชับ ชัดเจน ไม่ต้องบรรยายน้ำเยอะ เพื่อใช้เก็บเป็นบันทึกการซ้อมรายวัน";
+                // 📌 ประกอบสถิติเดิมจากฐานข้อมูล (ตัวแปร pbData) เป็นบริบทส่งให้ AI ทราบ
+                let pbContext = "สถิติ PB ปัจจุบันจากฐานข้อมูลของฉันคือ: ";
+                distances.forEach(d => {
+                    if(pbData[d].time) pbContext += `[${d}: ${pbData[d].time}] `;
+                });
+
+                // 📌 สั่ง AI ให้คืนค่า JSON กลับมาถ้ามีการทำลายสถิติ เพื่อให้ระบบเว็บดูดไปเซฟอัตโนมัติ
+                const prompt = `คุณคือผู้ช่วยวิเคราะห์สถิติการวิ่ง
+                ${pbContext}
+                ให้วิเคราะห์สถิติจากรูปภาพที่แนบมา และสรุปข้อมูลตามนี้:
+                1. สรุประยะทางรวม, เวลาที่ใช้, Pace, Heart Rate (สั้นๆ กระชับ)
+                2. เช็คเทียบกับสถิติ PB ด้านบนว่ามีการทำลายสถิติ (New PB) หรือไม่ (ถ้าระยะทางไกลกว่า Longest เดิม ถือว่าเป็น New PB ของ Longest)
+                3. ถ้ามี New PB ให้พิมพ์แสดงความยินดีในข้อความด้วย
+                4. **สำคัญมาก:** หากพบว่ามีสถิติที่ทำลาย New PB ของเดิม ให้พิมพ์ JSON โค้ดแนบไว้ท้ายสุดของข้อความสรุป ในรูปแบบนี้เป๊ะๆ:
+                \`\`\`json
+                {
+                  "newPBs": [
+                    { "distance": "10k", "time": "00:50:00", "diff": "-00:01:15" },
+                    { "distance": "Longest", "time": "14.5 km", "diff": "" }
+                  ]
+                }
+                \`\`\`
+                (คำเตือน: ตัวแปร distance ต้องสะกดตามนี้เท่านั้น: 1k, 1Mile, 5k, 10k, Half, Full, Longest. ถ้าไม่มีการทำลายสถิติเลย ห้ามพิมพ์ JSON เด็ดขาด)`;
 
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${currentApiKey}`, {
                     method: 'POST',
@@ -1005,8 +1016,50 @@
                 const data = await response.json();
                 if (data.error) throw new Error(data.error.message);
 
-                const textResult = data.candidates[0].content.parts[0].text;
-                aiSummary.value = textResult.trim();
+                let textResult = data.candidates[0].content.parts[0].text;
+                
+                // 📌 ระบบค้นหาโค้ดลับ JSON ที่ AI แอบแนบมา
+                const jsonRegex = /```json\s*(\{[\s\S]*?\})\s*```/;
+                const match = textResult.match(jsonRegex);
+                
+                if (match) {
+                    try {
+                        const parsedJson = JSON.parse(match[1]);
+                        if (parsedJson.newPBs && parsedJson.newPBs.length > 0) {
+                            
+                            // หาวันที่ปัจจุบัน (รูปแบบ วว/ดด/ปปปป)
+                            const d = new Date();
+                            const todayStr = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}/${d.getFullYear()}`;
+                            
+                            let isUpdated = false;
+                            
+                            // อัปเดตตัวแปรในระบบ
+                            parsedJson.newPBs.forEach(pb => {
+                                if (distances.includes(pb.distance)) {
+                                    pbData[pb.distance].time = pb.time || pbData[pb.distance].time;
+                                    pbData[pb.distance].diff = pb.diff || "";
+                                    pbData[pb.distance].date = todayStr;
+                                    isUpdated = true;
+                                }
+                            });
+
+                            // ถ้ามีการอัปเดตจริง ให้โยนเซฟลง Firestore อัตโนมัติทันที
+                            if (isUpdated) {
+                                await db.collection('users').doc(currentUserUid).set({ pbStats: pbData }, { merge: true });
+                                renderPBList(false); // วาดกล่อง PB ใหม่
+                                alert("🎉 ว้าว! AI ตรวจพบ New PB และได้ทำการอัปเดตลงฐานข้อมูลให้คุณอัตโนมัติแล้วครับ!");
+                            }
+                        }
+                    } catch (e) {
+                        console.error("AI ส่ง JSON มาผิดรูปแบบ: ", e);
+                    }
+                    
+                    // ตัดโค้ดลับ JSON ทิ้งไป ให้เหลือแต่ข้อความมนุษย์อ่าน
+                    textResult = textResult.replace(jsonRegex, '').trim();
+                }
+
+                // นำข้อความสรุปใส่ในกล่องให้ User ดู/แก้ไข ก่อนเซฟตารางรายวัน
+                aiSummary.value = textResult;
                 
                 loadingText.style.display = 'none';
                 resultBox.style.display = 'block';
