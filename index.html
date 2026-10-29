@@ -563,7 +563,7 @@
         }
 
         // =========================================
-        // สเต็ปที่ 2: เซฟข้อมูลวิ่ง -> ตรวจ PB (ตัดออโต้โค้ชออก เพื่อความรวดเร็วและประหยัดโควต้า)
+        // สเต็ปที่ 2: เซฟข้อมูลวิ่ง -> ตรวจ PB (กลับไปใช้ gemini-3.8-flash ตามคำสั่ง)
         // =========================================
         async function saveDayData() {
             if (!selectedDateKey) return;
@@ -580,7 +580,7 @@
             btnSave.innerText = "⏳ กำลังตรวจสอบสถิติและบันทึก...";
 
             try {
-                // 1. ตรวจสอบ New PB ก่อนเซฟ (1 API Request)
+                // 1. ตรวจสอบ New PB ก่อนเซฟ
                 if (currentApiKey && runAiSummary !== "") {
                     let pbContext = "สถิติ PB ปัจจุบัน:\n";
                     distances.forEach(d => { if(pbData[d].time) pbContext += `- ${d}: ${pbData[d].time}\n`; });
@@ -602,7 +602,7 @@
                     \`\`\`
                     ถ้าไม่พบ หรือวิเคราะห์ไม่ได้ ให้ตอบแค่ {}`;
 
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentApiKey}`, {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${currentApiKey}`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                     });
@@ -654,7 +654,6 @@
                 currentMonthData[selectedDateKey] = payload;
                 renderCalendar(currentYear, currentMonth);
                 
-                // ปิดหน้าต่างทันที (ไม่ต้องรอวิเคราะห์โค้ชแล้ว เพื่อความรวดเร็ว)
                 closeModal('dayModal');
 
             } catch (error) {
@@ -666,7 +665,7 @@
         }
 
         // =========================================
-        // สเต็ปที่ 3: ฟังก์ชัน AI โค้ช (กดแบบ Manual)
+        // สเต็ปที่ 3: ฟังก์ชัน AI โค้ช (กดแบบ Manual กลับมาใช้ gemini-3.8-flash)
         // =========================================
         async function analyzeOverallPlanWithAI() {
             const apiKey = getSavedApiKey();
@@ -682,10 +681,9 @@
             btnCoach.disabled = true;
             btnCoach.innerText = "⏳ กำลังดึงข้อมูลและวิเคราะห์...";
             statusIndicator.innerText = "⏳ AI กำลังวิเคราะห์แผน (30 วันล่าสุด)...";
-            statusIndicator.style.color = "#f59e0b"; // สีเหลือง
+            statusIndicator.style.color = "#f59e0b"; 
 
             try {
-                // คำนวณหาเดือนปัจจุบัน และเดือนที่แล้ว เพื่อกวาดข้อมูลจาก Firestore มาให้ครอบคลุม 30 วัน
                 const today = new Date();
                 const month1 = today.getMonth();
                 const year1 = today.getFullYear();
@@ -695,30 +693,26 @@
                 const month2 = prevMonthDate.getMonth();
                 const year2 = prevMonthDate.getFullYear();
 
-                // คิวรีเดือนปัจจุบัน
                 const prefix1 = `${year1}-${month1}-`;
                 const snap1 = await db.collection('users').doc(currentUserUid).collection('runs')
                     .where(firebase.firestore.FieldPath.documentId(), '>=', prefix1)
                     .where(firebase.firestore.FieldPath.documentId(), '<', prefix1 + '\uf8ff').get();
                     
-                // คิวรีเดือนที่แล้ว
                 const prefix2 = `${year2}-${month2}-`;
                 const snap2 = await db.collection('users').doc(currentUserUid).collection('runs')
                     .where(firebase.firestore.FieldPath.documentId(), '>=', prefix2)
                     .where(firebase.firestore.FieldPath.documentId(), '<', prefix2 + '\uf8ff').get();
 
-                // รวมข้อมูล 2 เดือนไว้ใน Object เดียว
                 const allRecentRuns = {};
                 snap1.forEach(doc => allRecentRuns[doc.id] = doc.data());
                 snap2.forEach(doc => allRecentRuns[doc.id] = doc.data());
 
-                // 📌 สร้างหน้าต่างเวลา 30 วันเป๊ะๆ ย้อนหลัง (เติม "พัก" ให้วันที่ไม่ได้วิ่ง)
                 let runHistoryContext = "ประวัติ 30 วันปฏิทินย้อนหลัง (เรียงจากเก่าไปใหม่):\n";
                 
                 for (let i = 29; i >= 0; i--) {
                     let d = new Date();
                     d.setDate(d.getDate() - i);
-                    let key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; // format ตรงกับ documentId
+                    let key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; 
                     let displayDate = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth()+1).padStart(2, '0')}`;
                     
                     if (allRecentRuns[key]) {
@@ -733,7 +727,6 @@
                     }
                 }
 
-                // ดึง Profile & PB ปัจจุบัน
                 const age = calculateAge() || "ไม่ระบุ";
                 const shortG = document.getElementById('inputShortGoal').value || "-";
                 const longG = document.getElementById('inputLongGoal').value || "-";
@@ -762,7 +755,7 @@
                 
                 ตอบกลับเป็นภาษาไทยที่กระชับ เป็นมิตร ให้กำลังใจ และนำไปปฏิบัติได้จริง`;
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
@@ -771,16 +764,13 @@
                 if (data.error) throw new Error(data.error.message);
 
                 let aiResponse = data.candidates[0].content.parts[0].text;
-                // แปลง Markdown ให้สวยงามสำหรับ HTML
                 aiResponse = aiResponse.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>');
 
-                // เซฟคำแนะนำลง Firestore เพื่อให้เปิดหน้าเว็บมาครั้งหน้าก็ยังอยู่
                 await db.collection('users').doc(currentUserUid).set({ latestCoachAdvice: aiResponse }, { merge: true });
 
-                // อัปเดต UI ทันที
                 dashboardBox.innerHTML = aiResponse;
                 statusIndicator.innerText = "✅ อัปเดตล่าสุดเรียบร้อย";
-                statusIndicator.style.color = "#10b981"; // สีเขียว
+                statusIndicator.style.color = "#10b981"; 
 
             } catch (error) {
                 console.error("Coach Error: ", error);
@@ -843,7 +833,7 @@
         }
 
         /* =========================================
-           สเต็ปที่ 1: ให้ AI อ่านรูปล็อกฟอร์แมต
+           สเต็ปที่ 1: ให้ AI อ่านรูปล็อกฟอร์แมต (ใช้ gemini-3.8-flash)
            ========================================= */
         function getSavedApiKey() { return localStorage.getItem('geminiRunApiKey') || ""; }
         function openSettingsModal() { document.getElementById('inputApiKey').value = getSavedApiKey(); document.getElementById('settingsModal').style.display = 'flex'; }
@@ -884,7 +874,7 @@
 
                 ห้ามบรรยายน้ำเยอะ เพื่อให้ระบบนำตาราง Lap ไปวิเคราะห์และคำนวณสถิติต่อได้ง่ายที่สุด`;
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentApiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${currentApiKey}`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [ { text: prompt }, ...imageParts ] }] })
                 });
