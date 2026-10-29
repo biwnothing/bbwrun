@@ -95,6 +95,8 @@
             padding: 6px; border-radius: 6px; font-family: inherit; font-weight: 500;
             cursor: pointer; margin-top: 5px; font-size: 0.75rem;
         }
+        
+        .btn-ai:disabled { background-color: var(--color-border); cursor: not-allowed; opacity: 0.7; }
 
         .btn-pb {
             width: 100%; background-color: #f59e0b; color: white; border: none;
@@ -267,13 +269,16 @@
                 </ul>
                 <button class="btn-pb" onclick="openPBModal()">🏆 ดูสถิติ PB 7 ระยะ</button>
                 
-                <!-- กระดานแสดงผลการวิเคราะห์ของโค้ช AI (อัตโนมัติ) -->
+                <!-- คืนชีพปุ่มกดโค้ชวิเคราะห์แบบ Manual เพื่อประหยัด API รัวๆ -->
+                <button class="btn-ai" id="btnStartCoach" onclick="analyzeOverallPlanWithAI()">🤖 ให้โค้ช AI วิเคราะห์ (30 วันล่าสุด)</button>
+                
+                <!-- กระดานแสดงผลการวิเคราะห์ของโค้ช AI -->
                 <div style="margin-top: 15px; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 0.8rem; font-weight: bold; color: var(--color-primary);">🤖 คำแนะนำล่าสุดจากโค้ช</span>
-                    <span id="coachStatus" style="font-size: 0.65rem; color: var(--color-text-light);">สแตนด์บาย</span>
+                    <span style="font-size: 0.8rem; font-weight: bold; color: var(--color-primary);">🤖 คำแนะนำล่าสุด</span>
+                    <span id="coachStatus" style="font-size: 0.65rem; color: var(--color-text-light);"></span>
                 </div>
                 <div class="coach-dashboard" id="coachDashboardBox">
-                    <span style="color: var(--color-text-light); font-style: italic;">เมื่อคุณบันทึกการซ้อม ระบบจะวิเคราะห์แผนอัตโนมัติ แล้วจะแสดงผลตรงนี้ครับ...</span>
+                    <span style="color: var(--color-text-light); font-style: italic;">กดปุ่มด้านบนเพื่อให้ AI วิเคราะห์ประวัติ 30 วันย้อนหลังครับ...</span>
                 </div>
             </div>
         </div>
@@ -349,7 +354,7 @@
                 </div>
             </div>
 
-            <button class="btn-save" id="btnSaveDay" onclick="saveDayData()">💾 บันทึกและวิเคราะห์อัตโนมัติ</button>
+            <button class="btn-save" id="btnSaveDay" onclick="saveDayData()">💾 บันทึกสถิติรายวัน</button>
         </div>
     </div>
 
@@ -558,7 +563,7 @@
         }
 
         // =========================================
-        // สเต็ปที่ 2: เซฟข้อมูลวิ่ง -> ตรวจ PB อัตโนมัติ -> เรียกโค้ชทำงานหลังบ้าน
+        // สเต็ปที่ 2: เซฟข้อมูลวิ่ง -> ตรวจ PB (ตัดออโต้โค้ชออก เพื่อความรวดเร็วและประหยัดโควต้า)
         // =========================================
         async function saveDayData() {
             if (!selectedDateKey) return;
@@ -575,7 +580,7 @@
             btnSave.innerText = "⏳ กำลังตรวจสอบสถิติและบันทึก...";
 
             try {
-                // 1. ตรวจสอบ New PB ก่อนเซฟ
+                // 1. ตรวจสอบ New PB ก่อนเซฟ (1 API Request)
                 if (currentApiKey && runAiSummary !== "") {
                     let pbContext = "สถิติ PB ปัจจุบัน:\n";
                     distances.forEach(d => { if(pbData[d].time) pbContext += `- ${d}: ${pbData[d].time}\n`; });
@@ -597,7 +602,7 @@
                     \`\`\`
                     ถ้าไม่พบ หรือวิเคราะห์ไม่ได้ ให้ตอบแค่ {}`;
 
-                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${currentApiKey}`, {
+                    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentApiKey}`, {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                     });
@@ -648,29 +653,36 @@
                 await db.collection('users').doc(currentUserUid).collection('runs').doc(selectedDateKey).set(payload);
                 currentMonthData[selectedDateKey] = payload;
                 renderCalendar(currentYear, currentMonth);
+                
+                // ปิดหน้าต่างทันที (ไม่ต้องรอวิเคราะห์โค้ชแล้ว เพื่อความรวดเร็ว)
                 closeModal('dayModal');
-
-                // 3. ทริกเกอร์ให้ AI โค้ชวิเคราะห์ข้อมูล 30 วันล่าสุดต่อทันทีแบบ Background (Seamless)
-                triggerAutoCoachAnalysis(currentApiKey);
 
             } catch (error) {
                 alert("บันทึกไม่สำเร็จ: " + error.message);
             } finally {
                 btnSave.disabled = false;
-                btnSave.innerText = "💾 บันทึกและวิเคราะห์อัตโนมัติ";
+                btnSave.innerText = "💾 บันทึกสถิติรายวัน";
             }
         }
 
         // =========================================
-        // สเต็ปที่ 3: ฟังก์ชัน AI โค้ช (แก้ไขตรรกะกวาดข้อมูล 30 วันตามปฏิทินที่ถูกต้อง)
+        // สเต็ปที่ 3: ฟังก์ชัน AI โค้ช (กดแบบ Manual)
         // =========================================
-        async function triggerAutoCoachAnalysis(apiKey) {
-            if (!apiKey) return;
+        async function analyzeOverallPlanWithAI() {
+            const apiKey = getSavedApiKey();
+            if (!apiKey) {
+                alert("กรุณาตั้งค่า Gemini API Key ก่อนใช้งานโค้ชครับ");
+                return;
+            }
             
             const statusIndicator = document.getElementById('coachStatus');
             const dashboardBox = document.getElementById('coachDashboardBox');
+            const btnCoach = document.getElementById('btnStartCoach');
+            
+            btnCoach.disabled = true;
+            btnCoach.innerText = "⏳ กำลังดึงข้อมูลและวิเคราะห์...";
             statusIndicator.innerText = "⏳ AI กำลังวิเคราะห์แผน (30 วันล่าสุด)...";
-            statusIndicator.style.color = "#f59e0b"; // สีเหลืองเตือนกำลังทำงาน
+            statusIndicator.style.color = "#f59e0b"; // สีเหลือง
 
             try {
                 // คำนวณหาเดือนปัจจุบัน และเดือนที่แล้ว เพื่อกวาดข้อมูลจาก Firestore มาให้ครอบคลุม 30 วัน
@@ -703,7 +715,6 @@
                 // 📌 สร้างหน้าต่างเวลา 30 วันเป๊ะๆ ย้อนหลัง (เติม "พัก" ให้วันที่ไม่ได้วิ่ง)
                 let runHistoryContext = "ประวัติ 30 วันปฏิทินย้อนหลัง (เรียงจากเก่าไปใหม่):\n";
                 
-                // วนลูป 30 ครั้ง ย้อนหลังจากอดีต (29 วันก่อน) มาจนถึงวันนี้ (0)
                 for (let i = 29; i >= 0; i--) {
                     let d = new Date();
                     d.setDate(d.getDate() - i);
@@ -718,7 +729,6 @@
                             runHistoryContext += `- ${displayDate}: ${r.type} | ${r.title} ${r.weight ? '| นน.'+r.weight : ''} ${r.sleep ? '| Sleep:'+r.sleep : ''}\n`;
                         }
                     } else {
-                        // วันที่ไม่มีข้อมูลใน Firestore คือวันพัก
                         runHistoryContext += `- ${displayDate}: พัก (ไม่ได้วิ่ง)\n`;
                     }
                 }
@@ -752,7 +762,7 @@
                 
                 ตอบกลับเป็นภาษาไทยที่กระชับ เป็นมิตร ให้กำลังใจ และนำไปปฏิบัติได้จริง`;
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${apiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
                 });
@@ -773,9 +783,13 @@
                 statusIndicator.style.color = "#10b981"; // สีเขียว
 
             } catch (error) {
-                console.error("Auto Coach Error: ", error);
+                console.error("Coach Error: ", error);
                 statusIndicator.innerText = "❌ วิเคราะห์ผิดพลาด";
                 statusIndicator.style.color = "#ef4444";
+                alert("เกิดข้อผิดพลาดในการเรียกใช้โค้ช AI: " + error.message);
+            } finally {
+                btnCoach.disabled = false;
+                btnCoach.innerText = "🤖 ให้โค้ช AI วิเคราะห์ (30 วันล่าสุด)";
             }
         }
 
@@ -829,7 +843,7 @@
         }
 
         /* =========================================
-           สเต็ปที่ 1: ให้ AI อ่านรูปล็อกฟอร์แมต (ทำหน้าที่สร้าง Text เท่านั้น)
+           สเต็ปที่ 1: ให้ AI อ่านรูปล็อกฟอร์แมต
            ========================================= */
         function getSavedApiKey() { return localStorage.getItem('geminiRunApiKey') || ""; }
         function openSettingsModal() { document.getElementById('inputApiKey').value = getSavedApiKey(); document.getElementById('settingsModal').style.display = 'flex'; }
@@ -864,14 +878,13 @@
             try {
                 const imageParts = await Promise.all([...fileInput.files].map(fileToGenerativePart));
 
-                // บังคับรูปแบบตารางอย่างเข้มงวด เพื่อง่ายต่อการคำนวณ PB
                 const prompt = `วิเคราะห์ข้อมูลสถิติจากรูปภาพที่แนบมา และสรุปออกมาเป็น 2 ส่วนให้ชัดเจนเป๊ะๆ ตามโครงสร้างนี้เท่านั้น:
                 1. สรุปภาพรวม: ระยะทางรวม, เวลาสุทธิ, Pace เฉลี่ย, Heart Rate
                 2. ตาราง Lap Data: (บังคับสร้างเป็นตาราง Markdown ประกอบด้วยคอลัมน์: รอบที่ | ระยะทาง | เวลา | Pace)
 
                 ห้ามบรรยายน้ำเยอะ เพื่อให้ระบบนำตาราง Lap ไปวิเคราะห์และคำนวณสถิติต่อได้ง่ายที่สุด`;
 
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${currentApiKey}`, {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${currentApiKey}`, {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ contents: [{ parts: [ { text: prompt }, ...imageParts ] }] })
                 });
@@ -988,4 +1001,3 @@
     </script>
 </body>
 </html>
-```<FollowUp label="ลองรันดูแล้ว" query="ลองรันโค้ดดูแล้ว ระบบออโต้โค้ชดึงข้อมูลตรงเป๊ะ ทำงานพื้นหลังได้เนียนมาก"/>
